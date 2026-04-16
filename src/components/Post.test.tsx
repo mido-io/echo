@@ -19,6 +19,8 @@ describe('Post Component Engagement', () => {
         initialReposts={0} 
         initialHasLiked={false} 
         initialHasReposted={false} 
+        initialReplies={0}
+        isOwnPost={false}
       />
     );
 

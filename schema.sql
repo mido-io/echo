@@ -83,3 +83,64 @@ create policy "Reposts are viewable by everyone." on public.reposts
 
 create policy "Users can toggle their own reposts." on public.reposts
   for all using (auth.uid() = user_id);
+
+-- Basic table for Replies
+create table public.replies (
+  id uuid default gen_random_uuid() primary key,
+  post_id uuid references public.posts(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  content varchar(280) not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Basic table for Post Images (limit 4 handled in UI/App logic)
+create table public.post_images (
+  id uuid default gen_random_uuid() primary key,
+  post_id uuid references public.posts(id) on delete cascade not null,
+  image_url text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Basic table for Follows
+create table public.follows (
+  follower_id uuid references public.profiles(id) on delete cascade not null,
+  following_id uuid references public.profiles(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  primary key (follower_id, following_id)
+);
+
+-- Enable Row Level Security (RLS)
+alter table public.replies enable row level security;
+alter table public.post_images enable row level security;
+alter table public.follows enable row level security;
+
+-- Policies for Replies
+create policy "Replies are viewable by everyone." on public.replies
+  for select using (true);
+
+create policy "Users can insert their own replies." on public.replies
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can delete their own replies." on public.replies
+  for delete using (auth.uid() = user_id);
+
+-- Policies for Post Images
+create policy "Post Images are viewable by everyone." on public.post_images
+  for select using (true);
+
+create policy "Users can insert post images." on public.post_images
+  for insert with check (
+    auth.uid() = (select user_id from public.posts where id = post_id)
+  );
+
+create policy "Users can delete their own post images." on public.post_images
+  for delete using (
+    auth.uid() = (select user_id from public.posts where id = post_id)
+  );
+
+-- Policies for Follows
+create policy "Follows are viewable by everyone." on public.follows
+  for select using (true);
+
+create policy "Users can manage their own follows." on public.follows
+  for all using (auth.uid() = follower_id);
